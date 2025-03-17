@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeNoVa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-white flex flex-col items-center min-h-screen">
+    <div class="w-full bg-black text-white flex justify-center items-center py-4 fixed top-0 left-0 right-0">
+        <h1 class="text-2xl font-bold">ZeNoVa</h1>
+    </div>
+    <div class="grid grid-cols-3 gap-4 mt-20 mb-4 text-center">
+        <div class="flex flex-col items-center">
+            <img id="fan" class="w-40 h-40 object-contain mb-2">
+            <button id="fanSwitch" class="w-48 h-24 flex items-center justify-center" onclick="toggle('fan')">
+                <img id="fanSwitchImg" class="w-40 h-20 object-contain">
+            </button>
+        </div>
+        <div class="flex flex-col items-center">
+            <img id="light" class="w-40 h-40 object-contain mb-2">
+            <button id="lightSwitch" class="w-48 h-24 flex items-center justify-center" onclick="toggle('light')">
+                <img id="lightSwitchImg" class="w-40 h-20 object-contain">
+            </button>
+        </div>
+        <div class="flex flex-col items-center">
+            <img id="pump" class="w-40 h-40 object-contain mb-2">
+            <button id="pumpSwitch" class="w-48 h-24 flex items-center justify-center" onclick="toggle('pump')">
+                <img id="pumpSwitchImg" class="w-40 h-20 object-contain">
+            </button>
+        </div>
+    </div>
+    <script>
+        const states = {
+            fan: { off: 'OFF FAN.png', on: 'ON FAN.gif', cmdOff: 2, cmdOn: 3 },
+            light: { off: 'OFF LIGHT.png', on: 'ON LIGHT.png', cmdOff: 0, cmdOn: 1 },
+            pump: { off: 'OFF PUMP.jpg', on: 'ON PUMP.gif', cmdOff: 4, cmdOn: 5 }
+        };
+        const switchStates = { off: 'OFF SWITCH.jpg', on: 'ON SWITCH.jpg' };
+        const currentState = JSON.parse(localStorage.getItem('deviceState')) || { fan: 'off', light: 'off', pump: 'off' };
+
+        function updateUI() {
+            Object.keys(currentState).forEach(device => {
+                document.getElementById(device).src = states[device][currentState[device]];
+                document.getElementById(device + 'SwitchImg').src = switchStates[currentState[device]];
+            });
+        }
+
+        function toggle(device) {
+            currentState[device] = currentState[device] === 'off' ? 'on' : 'off';
+            localStorage.setItem('deviceState', JSON.stringify(currentState));
+            updateUI();
+            sendCommand(states[device][currentState[device] === 'on' ? 'cmdOn' : 'cmdOff']);
+        }
+
+        function sendCommand(cmd) {
+            try {
+                fetch(`https://zenova-server.onrender.com/setcmd/${cmd}`)
+            } catch (e) {
+
+            }
+        }
+
+        updateUI();
+    </script>
+</body>
+
+</html>
