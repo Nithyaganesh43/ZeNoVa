@@ -12,13 +12,12 @@
     <div class="w-full bg-black text-white flex justify-center items-center py-4 fixed top-0 left-0 right-0">
         <h1 class="text-2xl font-bold">ZeNoVa</h1>
     </div>
-
     <div class="mt-20 mb-4 w-full max-w-md">
-        <input id="userInput" type="text" placeholder="Enter message" class="w-full p-2 border rounded mb-2">
+        <input id="userInput" type="text" placeholder="Enter message" class="w-full p-2 border rounded mb-2"
+            onkeypress="handleKeyPress(event)">
         <input id="apiKey" type="password" placeholder="API Key" class="w-full p-2 border rounded mb-2">
         <button onclick="sendRequest()" class="w-full bg-blue-500 text-white p-2 rounded">Submit</button>
     </div>
-
     <div class="grid grid-cols-3 gap-4 text-center w-full max-w-4xl">
         <div class="flex flex-col items-center">
             <img id="fan" class="w-40 h-40 object-contain">
@@ -33,7 +32,6 @@
             <img id="pumpSwitchImg" class="w-40 h-auto mt-2" onclick="toggleDevice('pump')">
         </div>
     </div>
-
     <script>
         const states = {
             fan: { off: 'OFF FAN.png', on: 'ON FAN.gif', cmdOff: 2, cmdOn: 3 },
@@ -52,6 +50,10 @@
                 if (c == 5) currentState.pump = 'on';
                 if (c == 4) currentState.pump = 'off';
             });
+            renderUI();
+        }
+
+        function renderUI() {
             Object.keys(currentState).forEach(d => {
                 document.getElementById(d).src = states[d][currentState[d]];
                 document.getElementById(d + 'SwitchImg').src = switchStates[currentState[d]];
@@ -59,8 +61,13 @@
         }
 
         function toggleDevice(device) {
-            let cmd = (currentState[device] === 'off' ? states[device].cmdOn : states[device].cmdOff).toString();
+            currentState[device] = currentState[device] === 'off' ? 'on' : 'off';
+            renderUI();
+            let cmd = (currentState[device] === 'on' ? states[device].cmdOn : states[device].cmdOff).toString();
             fetch(`https://zenova-server.onrender.com/setcmd/${cmd}`);
+            fetch("https://zenova-server.onrender.com/getcmd")
+                .then(res => res.text())
+                .then(updateUI);
         }
 
         function sendRequest() {
@@ -78,16 +85,27 @@
                 } else {
                     alert("Invalid API Key");
                 }
+            }).then(() => {
+                fetch("https://zenova-server.onrender.com/getcmd")
+                    .then(res => res.text())
+                    .then(updateUI);
             });
+            document.getElementById("userInput").value = "";
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === "Enter") {
+                sendRequest();
+            }
         }
 
         if (localStorage.getItem("API_KEY")) {
             document.getElementById("apiKey").classList.add("hidden");
         }
 
-        let ws = new WebSocket("wss://zenova-server.onrender.com");
-        ws.onmessage = e => updateUI(e.data);
-        ws.onopen = () => fetch("https://zenova-server.onrender.com/getcmd").then(res => res.text()).then(updateUI);
+        fetch("https://zenova-server.onrender.com/getcmd")
+            .then(res => res.text())
+            .then(updateUI);
     </script>
 </body>
 
