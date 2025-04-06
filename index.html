@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeNoVa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-white flex flex-col items-center min-h-screen">
+    <div class="w-full bg-black text-white flex justify-center items-center py-4 fixed top-0 left-0 right-0">
+        <h1 class="text-2xl font-bold">ZeNoVa</h1>
+    </div>
+    <div class="mt-20 mb-4 w-full max-w-md">
+        <input id="userInput" type="text" placeholder="Enter message" class="w-full p-2 border rounded mb-2"
+            onkeypress="handleKeyPress(event)">
+        <input id="apiKey" type="password" placeholder="API Key" class="w-full p-2 border rounded mb-2">
+        <button onclick="sendRequest()" class="w-full bg-blue-500 text-white p-2 rounded">Submit</button>
+    </div>
+    <div class="grid grid-cols-3 gap-4 text-center w-full max-w-4xl">
+        <div class="flex flex-col items-center">
+            <img id="fan" class="w-40 h-40 object-contain">
+            <img id="fanSwitchImg" class="w-40 h-auto mt-2" onclick="toggleDevice('fan')">
+        </div>
+        <div class="flex flex-col items-center">
+            <img id="light" class="w-40 h-40 object-contain">
+            <img id="lightSwitchImg" class="w-40 h-auto mt-2" onclick="toggleDevice('light')">
+        </div>
+        <div class="flex flex-col items-center">
+            <img id="pump" class="w-40 h-40 object-contain">
+            <img id="pumpSwitchImg" class="w-40 h-auto mt-2" onclick="toggleDevice('pump')">
+        </div>
+    </div>
+
+    <script>
+        const states = {
+            fan: { off: 'OFF FAN.png', on: 'ON FAN.gif', cmdOff: 2, cmdOn: 3 },
+            light: { off: 'OFF LIGHT.png', on: 'ON LIGHT.png', cmdOff: 0, cmdOn: 1 },
+            pump: { off: 'OFF PUMP.jpg', on: 'ON PUMP.gif', cmdOff: 4, cmdOn: 5 }
+        };
+        const switchStates = { off: 'OFF SWITCH.jpg', on: 'ON SWITCH.jpg' };
+        let currentState = { light: 'off', fan: 'off', pump: 'off' };
+        let canToggle = true;
+
+        function parseCommand(cmd) {
+            let newState = { light: 'off', fan: 'off', pump: 'off' };
+            cmd.split('').forEach(c => {
+                if (c == 1) newState.light = 'on';
+                if (c == 0) newState.light = 'off';
+                if (c == 3) newState.fan = 'on';
+                if (c == 2) newState.fan = 'off';
+                if (c == 5) newState.pump = 'on';
+                if (c == 4) newState.pump = 'off';
+            });
+            return newState;
+        }
+
+        function updateUI(cmd) {
+            currentState = parseCommand(cmd);
+            renderUI();
+        }
+
+        function renderUI() {
+            Object.keys(currentState).forEach(d => {
+                document.getElementById(d).src = states[d][currentState[d]];
+                document.getElementById(d + 'SwitchImg').src = switchStates[currentState[d]];
+            });
+        }
+
+        function toggleDevice(device) {
+            if (!canToggle) return;
+            canToggle = false;
+            setTimeout(() => canToggle = true, 1000);
+
+            currentState[device] = currentState[device] === 'off' ? 'on' : 'off';
+
+            let cmdList = [
+                currentState.light === 'on' ? states.light.cmdOn : states.light.cmdOff,
+                currentState.fan === 'on' ? states.fan.cmdOn : states.fan.cmdOff,
+                currentState.pump === 'on' ? states.pump.cmdOn : states.pump.cmdOff
+            ].join('');
+
+            fetch(`https://zenova-server.onrender.com/setcmd/${cmdList}`);
+        }
+
+        function sendRequest() {
+            let message = document.getElementById("userInput").value;
+            let apiKey = localStorage.getItem("API_KEY") || document.getElementById("apiKey").value;
+            if (message.length < 3 || message.length > 100) return;
+            fetch("https://zenova-server.onrender.com/request", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Credentials": "include" },
+                body: JSON.stringify({ "API_KEY": apiKey, "message": message })
+            }).then(res => {
+                if (res.ok) {
+                    localStorage.setItem("API_KEY", apiKey);
+                    document.getElementById("apiKey").classList.add("hidden");
+                } else {
+                    alert("Invalid API Key");
+                }
+            });
+            document.getElementById("userInput").value = "";
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === "Enter") {
+                sendRequest();
+            }
+        }
+
+        if (localStorage.getItem("API_KEY")) {
+            document.getElementById("apiKey").classList.add("hidden");
+        }
+
+        fetch("https://zenova-server.onrender.com/getcmd")
+            .then(res => res.text())
+            .then(updateUI);
+
+        // WebSocket for real-time updates
+        let ws = new WebSocket("wss://zenova-server.onrender.com");
+        ws.onmessage = (event) => {
+            updateUI(event.data);
+        };
+    </script>
+</body>
+
+</html>
